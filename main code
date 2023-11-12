@@ -1,0 +1,77 @@
+import requests
+import telepot
+
+# telegram information
+token = "YOUR TELEGRAM BOT TOKEN"
+chat_id = "THE CHAT ID"
+bot = telepot.Bot(token)
+
+# whatsapp information
+apikey = "THE WHATSAPP API KEY"
+group = "THE WHATSAPP API GROUP ID"
+
+
+# This function get all the relevant information, join it into a long string, and return that final string.
+def data_string():
+    data_str = ""
+
+    # to get the data from the API
+    nbadata = requests.get("https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard")
+    o = nbadata.json()
+    for event in o["events"]:
+
+        # the name of the event
+        data_str = (data_str + event["name"] + "\n" + "https://www.youtube.com/results?search_query=" +
+                    event["name"].replace(" ", "+") + "\n" + "\n")
+        for team in event["competitions"]:
+            for competitor in team["competitors"]:
+                # the outcome of the game
+                data_str = data_str + competitor["team"]["displayName"] + " " + competitor["score"] + "\n"
+                # record summary
+                data_str = data_str + str(competitor["records"][1]["summary"]) + "\n"
+                # Rating
+                data_str = (data_str + competitor["leaders"][3]["leaders"][0]["athlete"]["fullName"] + " " +
+                            competitor["leaders"][3]["leaders"][0]["displayValue"] + "\n" + "\n")
+
+        data_str = data_str + "\n"
+
+    return data_str
+
+
+# this function is handling the act of communicating with telegram and sending the message
+def send_message(text):
+    url_req = "https://api.telegram.org/bot" + token + "/sendMessage" + "?chat_id=" + chat_id + "&text=" + text
+    results = requests.get(url_req)
+
+
+# this function is handling the act of communicating with Whatsapp and sending the message
+def sendWSP(message, apikey, gid=0):
+    url = "https://whin2.p.rapidapi.com/send"
+    headers = {
+        "content-type": "application/json",
+        "X-RapidAPI-Key": apikey,
+        "X-RapidAPI-Host": "whin2.p.rapidapi.com"}
+    try:
+        if gid == 0:
+            return requests.request("POST", url, json=message, headers=headers)
+        else:
+            url = "https://whin2.p.rapidapi.com/send2group"
+            querystring = {"gid": gid}
+            return requests.request("POST", url, json=message, headers=headers, params=querystring)
+    except requests.ConnectionError:
+        return "Error: Connection Error"
+
+
+def main():
+    # the information that been sent
+    all_data = data_string()
+
+    # send to telegram channel
+    send_message(all_data)
+
+    # send to whatsapp group
+    """sendWSP({"text": all_data}, apikey, group)"""
+
+
+if __name__ == "__main__":
+    main()
